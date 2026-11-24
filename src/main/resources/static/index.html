@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BSO Flood Simulator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css?v=20261124-3" />
+</head>
+<body class="welcome-active">
+
+<section class="welcome-screen" id="welcomeScreen" aria-labelledby="welcomeTitle">
+    <div class="welcome-card">
+        <div class="welcome-profile-frame"><img src="img/profile.jpg" alt="Portrait" class="welcome-profile"></div>
+        <h1 id="welcomeTitle">Welcome to BSO Flood Simulator</h1>
+        <p class="welcome-note">Explore rainfall, terrain and flood susceptibility across your selected study area.</p>
+        <button class="welcome-button" id="exploreAppBtn" type="button">Explore Web App <span aria-hidden="true">→</span></button>
+    </div>
+</section>
+
+<header>
+    <div class="brand">
+        <img src="img/logo.png" alt="BSO logo" class="logo-img" id="logoImg" />
+        <div class="logo-fallback" id="logoFallback">BSO</div>
+        <div class="brand-text">
+            <h1>BSO Geospatial &amp; Engineering Consults</h1>
+            <span>Flood Simulation Platform</span>
+        </div>
+    </div>
+</header>
+
+<div class="app">
+    <aside>
+        <div class="sidebar-tabs" role="tablist" aria-label="Flood simulator sections">
+            <button class="sidebar-tab active" id="tab-study" role="tab" aria-selected="true" aria-controls="panel-study" data-tab="study">Study Area</button>
+            <button class="sidebar-tab" id="tab-analysis" role="tab" aria-selected="false" aria-controls="panel-analysis" data-tab="analysis">Analysis Mode</button>
+            <button class="sidebar-tab" id="tab-inputs" role="tab" aria-selected="false" aria-controls="panel-inputs" data-tab="inputs">Flood Inputs</button>
+            <button class="sidebar-tab" id="tab-results" role="tab" aria-selected="false" aria-controls="panel-results" data-tab="results">Results &amp; Report</button>
+        </div>
+
+        <div class="tab-panel active" id="panel-study" role="tabpanel" aria-labelledby="tab-study">
+            <div class="section">
+                <h2>Search location</h2>
+                <div class="search-row">
+                    <input type="text" id="searchInput" placeholder="e.g. Ibadan, Lagos, Ile-Ife" />
+                    <button class="btn-secondary" id="searchBtn">Search</button>
+                </div>
+                <ul class="search-results" id="searchResults"></ul>
+            </div>
+            <div class="section">
+                <h2>Study area</h2>
+                <div class="coords" id="coords">No area selected yet. Click the map, or upload an area below.</div>
+                <div class="field" style="margin-top:12px">
+                    <label for="radius">Radius around the clicked point (km)</label>
+                    <input type="number" id="radius" value="3" min="0.1" step="0.5" />
+                    <div class="small">No fixed limit. Very large areas take longer, and the server will tell you if an area is too big.</div>
+                </div>
+                <div class="upload-box">
+                    <label for="areaFile">Or upload your own area</label>
+                    <input type="file" id="areaFile" accept=".kml,.kmz,.geojson,.json" />
+                    <div class="small">KML or GeoJSON polygon.</div>
+                </div>
+                <button class="btn-secondary full" id="clearBtn" style="margin-top:12px">Clear area</button>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="panel-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+            <div class="section">
+                <h2>Analysis mode</h2>
+                <div class="field">
+                    <label for="analysisMode">Mode</label>
+                    <select id="analysisMode">
+                        <option value="water">Water level simulation</option>
+                        <option value="rainfall">Rainfall</option>
+                        <option value="elevation">Elevation</option>
+                        <option value="slope">Slope</option>
+                        <option value="risk">Flood Susceptibility Index</option>
+                    </select>
+                    <div class="small" id="modeHelp">Choose the analysis you want to run for the selected study area.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="panel-inputs" role="tabpanel" aria-labelledby="tab-inputs" hidden>
+            <div class="section">
+                <h2>Flood inputs</h2>
+                <div class="row">
+                    <div class="field">
+                        <label for="waterLevel">Water level (m)</label>
+                        <input type="number" id="waterLevel" value="2" min="0" step="0.5" />
+                    </div>
+                    <div class="field">
+                        <label for="year">Rainfall year</label>
+                        <select id="year"></select>
+                    </div>
+                </div>
+                <div class="small">Water level is measured above the lowest ground in the selected area. The selected year controls annual rainfall mapping and the Flood Susceptibility Index.</div>
+            </div>
+            <div class="section" id="reclassificationPanel" style="display:none">
+                <h2>Reclassification &amp; normalisation</h2>
+                <p class="small">Run the analysis once to display the observed minimum and maximum for each factor. Edit the five class ranges and normalised scores here, then adjust the overlay weights below and run the analysis again.</p>
+                <div id="reclassificationTables"><p class="small">The class tables will appear after the first Flood Susceptibility Index analysis.</p></div>
+            </div>
+            <div class="section" id="overlayWeights" style="display:none">
+                <h2>Overlay weights (%)</h2>
+                <div class="small">Set the contribution of each factor. The entered values are normalised to 100% when the overlay is calculated.</div>
+                <div class="weight-grid">
+                    <label>Rainfall <input class="weight-input" data-factor="rainfall" type="number" min="0" max="100" value="34"></label>
+                    <label>Elevation <input class="weight-input" data-factor="elevation" type="number" min="0" max="100" value="33"></label>
+                    <label>Slope <input class="weight-input" data-factor="slope" type="number" min="0" max="100" value="33"></label>
+                </div>
+                <div class="small" id="weightTotal">Entered total: 100%</div>
+            </div>
+            <button class="simulate" id="simulateBtn">Run Analysis</button>
+        </div>
+
+        <div class="tab-panel" id="panel-results" role="tabpanel" aria-labelledby="tab-results" hidden>
+            <div class="section">
+                <h2>Results and report</h2>
+                <div class="result" id="result"></div>
+                <div class="player" id="player">
+                    <h2>Flood animation</h2>
+                    <div class="player-row">
+                        <button class="btn-secondary" id="playBtn">Pause</button>
+                        <input type="range" id="timeSlider" min="0" max="100" step="0.5" value="0" />
+                    </div>
+                    <div class="player-info" id="playerInfo"></div>
+                </div>
+                <button class="btn-secondary full" id="featuresBtn" type="button">Analyse OpenStreetMap features</button>
+                <div class="small" id="featuresResult">Counts of mapped OpenStreetMap features in each susceptibility zone will appear here.</div>
+                <div class="osm-chart-panel"><h3>OSM features by risk zone</h3><div class="osm-chart"><canvas id="osmFeatureChart" aria-label="Chart of OpenStreetMap features by susceptibility zone"></canvas></div><div class="small" id="osmChartFallback"></div></div>
+                <button class="btn-secondary full" id="reportBtn" type="button" style="margin-top:10px" disabled>Generate PDF report</button>
+                <div class="small">PDF includes the analysis map, results, five risk zones, OSM feature counts and charts.</div>
+                <div class="small">External data availability depends on the source service and internet connection.</div>
+            </div>
+            <div id="reportPreview" class="report-preview" style="display:none">
+                <div class="report-preview-head">
+                    <strong>PDF report preview</strong>
+                    <button class="btn-secondary" id="closeReportPreview" type="button">Close</button>
+                </div>
+                <iframe id="reportFrame" title="PDF report preview"></iframe>
+                <div class="report-preview-fallback" id="reportPreviewFallback">If the embedded PDF viewer does not display, <a id="openReportNewTab" target="_blank" rel="noopener">open the report in a new tab</a>.</div>
+                <button class="btn-secondary full" id="downloadReport" type="button">Download PDF</button>
+            </div>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap">
+            <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+            <div id="progressText"></div>
+            <button class="btn-secondary full" id="cancelBtn">Cancel</button>
+        </div>
+        <footer class="side-foot">&copy; <span id="yr"></span> BSO Geospatial &amp; Engineering Consults</footer>
+    </aside>
+    <div id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
+    <div id="map"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="js/app.js?v=20261124-3"></script>
+</body>
+</html>
