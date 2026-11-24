@@ -1,3 +1,4 @@
+
 package com.bso.flood_sim;
 
 import org.springframework.http.MediaType;
@@ -24,25 +25,36 @@ public class OsmFeatureService {
         if ((north - south) * (east - west) > 1.0) {
             throw new IllegalStateException("The study area is too large for the OpenStreetMap feature query. Reduce the study area and try again.");
         }
+
         String bbox = String.format(java.util.Locale.US, "%.6f,%.6f,%.6f,%.6f", south, west, north, east);
         String query = "[out:json][timeout:60];nwr(" + bbox + ");out center tags;";
         String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
+
         RuntimeException last = null;
+
         for (String endpoint : List.of(
                 "https://overpass-api.de/api/interpreter",
                 "https://overpass.kumi.systems/api/interpreter")) {
             try {
-                Map<?, ?> result = rest.post().uri(URI.create(endpoint))
+                Map<?, ?> result = rest.post()
+                        .uri(URI.create(endpoint))
+                        .header("User-Agent", "BSO-Flood-Simulator/1.0 (+https://bso-flood-simulator.onrender.com)")
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                        .body(body).retrieve().body(Map.class);
+                        .body(body)
+                        .retrieve()
+                        .body(Map.class);
+
                 if (result == null || !(result.get("elements") instanceof List<?>)) {
                     throw new IllegalStateException("Overpass returned an unexpected response.");
                 }
+
                 return (Map<String, Object>) result;
+
             } catch (Exception ex) {
                 last = ex instanceof RuntimeException re ? re : new IllegalStateException(ex);
             }
         }
+
         throw new IllegalStateException("Both OpenStreetMap Overpass endpoints failed. Please retry shortly.", last);
     }
 }
